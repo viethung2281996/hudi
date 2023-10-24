@@ -45,6 +45,9 @@ import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.avro.specific.SpecificRecordBase;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,6 +56,8 @@ import java.nio.ByteBuffer;
  * Helper class to convert between different action related payloads and {@link HoodieArchivedMetaEntry}.
  */
 public class MetadataConversionUtils {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MetadataConversionUtils.class);
 
   public static HoodieArchivedMetaEntry createMetaWrapper(HoodieInstant hoodieInstant, HoodieTableMetaClient metaClient) throws IOException {
     Option<byte[]> instantDetails = metaClient.getActiveTimeline().getInstantDetails(hoodieInstant);
@@ -152,6 +157,7 @@ public class MetadataConversionUtils {
     lsmTimelineInstant.setAction(activeAction.getAction());
     activeAction.getCommitMetadata(metaClient).ifPresent(commitMetadata -> lsmTimelineInstant.setMetadata(ByteBuffer.wrap(commitMetadata)));
     lsmTimelineInstant.setVersion(LSMTimeline.LSM_TIMELINE_INSTANT_VERSION_1);
+    LOG.info("Create LSM for active action {}", activeAction);
     switch (activeAction.getPendingAction()) {
       case HoodieTimeline.CLEAN_ACTION: {
         lsmTimelineInstant.setPlan(ByteBuffer.wrap(activeAction.getCleanPlan(metaClient)));

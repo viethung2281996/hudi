@@ -254,19 +254,25 @@ public class StreamWriteOperatorCoordinator
           // The executor thread inherits the classloader of the #notifyCheckpointComplete
           // caller, which is a AppClassLoader.
           Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-          // for streaming mode, commits the ever received events anyway,
-          // the stream write task snapshot and flush the data buffer synchronously in sequence,
-          // so a successful checkpoint subsumes the old one(follows the checkpoint subsuming contract)
-          final boolean committed = commitInstant(this.instant, checkpointId);
-          // schedules the compaction or clustering if it is enabled in stream execution mode
-          scheduleTableServices(committed);
 
-          if (committed) {
-            // start new instant.
-            startInstant();
-            // sync Hive if is enabled
-            syncHiveAsync();
+          List<WriteStatus> writeResults = Arrays.stream(eventBuffer)
+                  .filter(Objects::nonNull)
+                  .map(WriteMetadataEvent::getWriteStatuses)
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList());
+
+          if (writeResults.size() == 0 && !OptionsResolver.allowCommitOnEmptyBatch(conf)) {
+            // No data has written, reset the buffer and returns early
+            // Send commit ack event to the write function to unblock the flushing
+            // If this checkpoint has no inputs while the next checkpoint has inputs,
+            // the 'isConfirming' flag should be switched with the ack event.
+            if (checkpointId != -1) {
+              sendCommitAckEvents(checkpointId);
+            }
           }
+
+          scheduleTableServices(true);
+          syncHiveAsync();
         }, "commits the instant %s", this.instant
     );
   }
@@ -293,6 +299,11 @@ public class StreamWriteOperatorCoordinator
               handleBootstrapEvent(event);
             } else {
               handleWriteMetaEvent(event);
+              final boolean committed = commitInstant(event.getInstantTime());
+              LOG.info("Commit instant {}, event: {}", committed, event);
+              if (committed) {
+                startInstant();
+              }
             }
           }, "handle write metadata event for instant %s", this.instant
       );

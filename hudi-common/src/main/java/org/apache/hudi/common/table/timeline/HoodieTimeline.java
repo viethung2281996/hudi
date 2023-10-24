@@ -412,6 +412,9 @@ public interface HoodieTimeline extends Serializable {
   BiPredicate<String, String> LESSER_THAN = (commit1, commit2) -> commit1.compareTo(commit2) < 0;
 
   static boolean compareTimestamps(String commit1, BiPredicate<String, String> predicateToApply, String commit2) {
+    if (commit1 == null || commit1.isEmpty()) {
+      return false;
+    }
     return predicateToApply.test(commit1, commit2);
   }
 

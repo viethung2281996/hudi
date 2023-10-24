@@ -48,7 +48,7 @@ public class ActiveAction implements Serializable, Comparable<ActiveAction> {
   }
 
   public static ActiveAction fromInstants(List<HoodieInstant> instants) {
-    ValidationUtils.checkArgument(instants.size() <= 3);
+    ValidationUtils.checkArgument(instants.size() <= 4);
     HoodieInstant requested = null;
     HoodieInstant inflight = null;
     HoodieInstant completed = null;
@@ -87,7 +87,11 @@ public class ActiveAction implements Serializable, Comparable<ActiveAction> {
    * A COMPACTION action eventually becomes COMMIT when completed.
    */
   public String getPendingAction() {
-    return getPendingInstant().getAction();
+    HoodieInstant pendingInstant = getPendingInstant();
+    if (pendingInstant == null) {
+      return "";
+    }
+    return pendingInstant.getAction();
   }
 
   public String getInstantTime() {
@@ -150,7 +154,7 @@ public class ActiveAction implements Serializable, Comparable<ActiveAction> {
     } else if (inflight != null) {
       return inflight;
     } else {
-      throw new AssertionError("Pending instant does not exist.");
+      return null;
     }
   }
 

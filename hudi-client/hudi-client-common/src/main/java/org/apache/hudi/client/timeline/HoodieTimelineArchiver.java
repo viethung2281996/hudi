@@ -302,6 +302,7 @@ public class HoodieTimelineArchiver<T extends HoodieAvroPayload, I, K, O> {
     return instantsToArchive.stream().map(hoodieInstant -> {
       List<HoodieInstant> instantsToStream = groupByTsAction.get(Pair.of(hoodieInstant.getTimestamp(),
           HoodieInstant.getComparableAction(hoodieInstant.getAction())));
+      LOG.info("Instant to archive [{}]", instantsToStream);
       return ActiveAction.fromInstants(instantsToStream);
     });
   }
